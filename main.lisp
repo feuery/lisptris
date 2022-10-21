@@ -1,10 +1,18 @@
 ;; (require 'quicklisp)
-;; (ql:quickload :sdl2)
-;; (ql:quickload :fset)
+ (ql:quickload :sdl2)
+ (ql:quickload :fset)
 
 (defpackage :libtris.main 
   (:use :common-lisp
-   :sdl2))
+   :sdl2)
+  (:import-from :libtris.model :*expected-world-w*
+           :*expected-world-h*
+	   :get-in
+	   :*world*
+	   :merge-block
+           :*current-block*
+	   :*block-x*
+           :*block-y*))
 
 (in-package :libtris.main)
 
@@ -14,7 +22,15 @@
 (defvar alt-down? nil)
 (defvar shift-down? nil)
 
-(defun handle-kbd (sym) nil)
+(defun handle-kbd (sym)
+  (let ((scancode (sdl2:scancode-value sym)))
+    (cond ((sdl2:scancode= scancode :scancode-left) (if (> *block-x* 0)
+							(decf *block-x*)))
+	  ((sdl2:scancode= scancode :scancode-right) (if (< *block-x* (fset:size *world*))
+							 (incf *block-x*))))))
+	  
+
+
 
 (defun handle-windowevent ()
   (let ((flags (sdl2:get-window-flags *window*)))
@@ -30,23 +46,35 @@
 		alt-down? nil
 		shift-down? nil)))))
 
+(defun range (max &key (min 0) (step 1))
+   (loop for n from min below max by step
+      collect n))
+
 (defun idle (renderer draw-queue)
-  (sdl2:render-clear renderer)
+  (let ((world (merge-block *world* *current-block* *block-x* *block-y*)))
+    (sdl2:render-clear renderer)
 
-  ;;(render-scene renderer *document*)
-  
-  (sdl2:render-present renderer)
-  (sleep 0.002)
-
-  ;; (when (equalp app-state :engine)
-  ;;   (handle-kbd-event (queues:qpop qmapper.keyboard_loop:kbd-queue)))
-
-  ;; pass lambdas to sdl thread?
-  ;; (dolist (cmd *sdl-single-command-queue*)
-  ;;   (funcall cmd))
-  ;; (setf *sdl-single-command-queue* nil)
-  )
-
+    (let ((blocks-width (fset:size *world*))
+	  (blocks-height (fset:size (fset:first *world*))))
+      (dolist (x (range blocks-width))
+	(dolist (y (range blocks-height))
+	  (let ((block (get-in world (list x y))))
+	    (if block
+		(sdl2:set-render-draw-color renderer 0 0 255 120)
+		(sdl2:set-render-draw-color renderer 0 0 255 255))
+	    (sdl2:render-fill-rect renderer (sdl2:make-rect (* x 50)
+							    (* y 50)
+							    (if block
+								50
+								48)
+							    (if block
+								50
+								48)))))))
+    (sdl2:set-render-draw-color renderer 255 0 0 255)
+    
+    
+    (sdl2:render-present renderer)
+    (sleep 0.002)))
 
 (defvar +left-mouse-button+ 1)
 (defvar +right-mouse-button+ 3)
@@ -75,7 +103,8 @@
 			       (sdl2:mouse-state-p +right-mouse-button+))
 			   (format t "dragging, kait ~%"))
 		     (error (c)
-		       ;;(format t "tool-error: ~a~%" c))))
+		       ;;(format t "tool-error: ~a~%" c)
+		       )))
     (:idle ()
 	   (idle renderer '()))
 
@@ -91,3 +120,4 @@
 	(sdl2:set-render-draw-blend-mode renderer sdl2-ffi:+SDL-BLENDMODE-BLEND+)
 
 	(event-loop renderer)))))
+;;(main)
