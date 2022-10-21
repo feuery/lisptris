@@ -4,16 +4,23 @@
 (defpackage :libtris.model
   (:use :common-lisp)
   (:export :*expected-world-w*
+	   :rotate
 	   :get-in
            :*expected-world-h*
 	   :*world*
            :*current-block*
+	   :*current-block-rotation*
 	   :*block-x*
 	   :merge-block
+	   :range
            :*block-y*)
   (:shadowing-import-from :fset :map :map? :seq?))
 
 (in-package :libtris.model)
+
+(defun range (max &key (min 0) (step 1))
+   (loop for n from min below max by step
+      collect n))
 
 (setf *readtable* (fset:fset-setup-readtable *readtable*))
 
@@ -84,16 +91,37 @@
 		   1))
 	new-world))))
 
+(defun rotate (list-of-lists rotation)
+  (let ((transpose-or-mirror (cond ((= rotation 1) 'transpose)
+				   ((= rotation 2) 'mirror)
+				   ((= rotation 3) 'mirror-and-transpose))))
+    (labels ((transpose (list-of-lists)
+	       
+	       (labels ((convert (type l-of-ls)
+			  (fset:convert type (fset:image
+					      (lambda (seq)
+						(fset:convert type seq))
+					      l-of-ls))))
+		 (let ((list-of-lists (convert 'list list-of-lists)))
+		   (convert 'fset:seq (apply #'mapcar #'list list-of-lists)))))
+	     (mirror (list-of-lists)
+	       (fset:image #'fset:reverse list-of-lists)))
 
- ;; (merge-block (gen-world 5 10)
-;; 	     (gen-block) 1 1)
-
+       (cond ((equalp transpose-or-mirror 'transpose)
+	     (transpose list-of-lists))
+	    ((equalp transpose-or-mirror 'mirror)
+	     (mirror list-of-lists))
+	    ((equalp transpose-or-mirror 'mirror-and-transpose)
+	     (transpose (mirror list-of-lists)))
+	    (t list-of-lists)))))
 
 (defvar *expected-world-w* 10)
 (defvar *expected-world-h* 10)
 
 (defvar *world* (gen-world *expected-world-w* *expected-world-h*))
 (defvar *current-block* (gen-block))
+;; fucking hack, can't be arsed to make block a hashmap with these two fields
+(defvar *current-block-rotation* 0)
 
 (defvar *block-x* 0)
 (defvar *block-y* 0)
@@ -106,9 +134,10 @@
 	      (fset:size (fset:first *world*)))
 	  (incf *block-y*)
 	  (progn
-	    (setf *world* (merge-block *world* *current-block* *block-x* *block-y*)
+	    (setf *world* (merge-block *world* (rotate *current-block* *current-block-rotation*) *block-x* *block-y*)
 		  *block-x* 0
 		  *block-y* 0
+		  *current-block-rotation 0
 		  *current-block* (gen-block))))
       (sleep 1))))
 

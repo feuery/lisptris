@@ -6,11 +6,14 @@
   (:use :common-lisp
    :sdl2)
   (:import-from :libtris.model :*expected-world-w*
+		:rotate
            :*expected-world-h*
 	   :get-in
 	   :*world*
+	   :range
 	   :merge-block
            :*current-block*
+           :*current-block-rotation*
 	   :*block-x*
            :*block-y*))
 
@@ -27,7 +30,9 @@
     (cond ((sdl2:scancode= scancode :scancode-left) (if (> *block-x* 0)
 							(decf *block-x*)))
 	  ((sdl2:scancode= scancode :scancode-right) (if (< *block-x* (fset:size *world*))
-							 (incf *block-x*))))))
+							 (incf *block-x*)))
+	  ((sdl2:scancode= scancode :scancode-up) (setf *current-block-rotation* (mod (1+ *current-block-rotation*) 4))))))
+	   
 	  
 
 
@@ -46,12 +51,8 @@
 		alt-down? nil
 		shift-down? nil)))))
 
-(defun range (max &key (min 0) (step 1))
-   (loop for n from min below max by step
-      collect n))
-
 (defun idle (renderer draw-queue)
-  (let ((world (merge-block *world* *current-block* *block-x* *block-y*)))
+  (let ((world (merge-block *world* (rotate *current-block* *current-block-rotation*) *block-x* *block-y*)))
     (sdl2:render-clear renderer)
 
     (let ((blocks-width (fset:size *world*))
