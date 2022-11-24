@@ -122,3 +122,15 @@
 
 	(event-loop renderer)))))
 ;;(main)
+
+(loop for x from 0 to 7
+      if (oddp x) collect x)
+
+
+
+       (apply #'concatenate 'list
+	      (loop for x from 0 to 10
+		    collect 
+		    (loop for y from 0 to 10
+			  collect (list x y)))))
+

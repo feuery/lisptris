@@ -36,9 +36,13 @@
   (repeat w (repeat h nil)))
 
 (defun gen-block ()
-  #[#[nil t]
-    #[t t]
-    #[nil t]])
+   #[#[nil t]
+     #[t t]
+   #[nil t]]
+
+  ;; #[#[nil t nil]
+  ;;   #[t t t]]
+  )
 
 (defun assoc-in (obj ks val)
   ;;(declare (optimize (speed 0) (space 0) (debug 3)))
@@ -53,11 +57,46 @@
       new-obj)))
 
 (defun get-in (o ks)
+  (declare (optimize (speed 0) (space 0) (debug 3)))
   (let ((x (car ks))
 	(y (cadr ks)))
     (fset:@
      (fset:@ o x)
      y)))
+
+(defun not-collides? (world block block-x block-y)
+  ;; (declare (optimize (speed 0) (space 0) (debug 3)))
+  ;; (let* ((all-coordinates (apply #'concatenate 'list
+  ;; 				 (loop for x from 0 to (1- (fset:size world))
+  ;; 				       collect 
+  ;; 				       (loop for y from 0 to (1- (fset:size (fset:first world)))
+  ;; 					     collect (list x y)))))
+  ;; 	 (blocked-block-coordinates (apply 'concatenate 'list
+  ;; 					   (loop for x from 0 to (1- (fset:size block))
+  ;; 						 collect (loop for y from 0 to (1- (fset:size (fset:first block)))
+  ;; 							       if (get-in block (list x y))
+  ;; 								 collect (list x y)))))
+  ;; 	 (interesting-coordinates
+
+  ;; 	   (remove-if-not (lambda (coordinate)
+  ;; 			    (let ((x (first coordinate))
+  ;; 				  (y (second coordinate)))
+  ;; 			      (member-if (lambda (block-coord)
+  ;; 					   (let ((inner-block-x (+ block-x (first block-coord)))
+  ;; 						 (inner-block-y (+ block-y (second block-coord))))
+  ;; 					     (or (and (= (1- inner-block-x) x)
+  ;; 						      (= inner-block-y y))
+  ;; 						 (and (= inner-block-x x)
+  ;; 						      (= (1- inner-block-y) y)))))
+  ;; 					 blocked-block-coordinates)))
+  ;; 			  all-coordinates)))
+
+  ;;   result
+
+    t)
+    
+
+    
 
 (defun merge-block (world block at-x at-y) ;;at-x, at-y is the coordinate in world space
 ;;  (declare (optimize (speed 0) (space 0) (debug 3)))
@@ -67,6 +106,7 @@
 	 (block-h (fset:size (fset:first block)))
 	 (max-x (+ at-x block-w))
 	 (max-y (+ at-y block-h)))
+;;    (format t "block size ~a~%" (list block-w block-h))
     (labels ((make-merge (world x y)  ;; x,y is again in world-space
 	       
 	       (let ((block-x (- x at-x))
@@ -74,7 +114,9 @@
 		 (if (= y max-y)
 		     world
 		     (make-merge (if (and (< x world-w)
-					  (< y world-h))
+					  (< y world-h)
+					  (get-in block (list block-x block-y))
+					  (not-collides? world block block-x block-y))
 				     (assoc-in world (list x y)
 					       (get-in block (list block-x block-y)))
 				     world)
@@ -150,7 +192,8 @@
 (defun reset ()
   (handler-case (bordeaux-threads:destroy-thread *world-updater*)
     (error (c)))
-      
+
+  (setf *current-block-rotation* 0)
   (setf *world-updater* (bordeaux-threads:make-thread #'world-updater))
   (setf *world* (gen-world *expected-world-w* *expected-world-h*))
   (setf *block-x* 0)
